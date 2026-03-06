@@ -126,11 +126,20 @@ h1 {
   flex-direction: column;
   background: #000;
   position: relative;
+  overflow: hidden;
+}
+
+/* Photo view fills the panel while guessing */
+.photo-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .photo-wrap {
   flex: 1;
-  position: relative;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -142,16 +151,6 @@ h1 {
   transition: opacity .3s;
 }
 
-.name-overlay {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,.85));
-  padding: 2rem 1.25rem .75rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-.name-overlay.hidden { display: none; }
-
 .photo-credit {
   padding: .35rem .75rem;
   font-size: .7rem;
@@ -161,6 +160,45 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* Result view slides into the photo panel after confirming */
+.result-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  gap: .5rem;
+}
+.result-view.hidden { display: none; }
+
+.result-distance {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.result-score {
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--blue);
+  line-height: 1;
+}
+
+.result-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: .25rem;
+}
+
+.result-details {
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.6;
+  margin-bottom: .75rem;
 }
 
 /* ── Map Panel ─────────────────────────────────────────────────────────────── */
@@ -184,47 +222,6 @@ h1 {
   justify-content: flex-end;
 }
 
-/* ── Result Banner ─────────────────────────────────────────────────────────── */
-.result-banner {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.72);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 900;
-}
-.result-banner.hidden { display: none; }
-
-.result-inner {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 2rem 2.5rem;
-  text-align: center;
-  box-shadow: var(--shadow);
-  max-width: 380px;
-  width: 90%;
-}
-
-.result-distance {
-  font-size: 1.6rem;
-  font-weight: 800;
-  margin-bottom: .4rem;
-}
-
-.result-score {
-  font-size: 2.4rem;
-  font-weight: 900;
-  color: var(--blue);
-  margin-bottom: .5rem;
-}
-
-.result-details {
-  color: var(--muted);
-  font-size: .85rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
-}
 
 /* ── End Screen ────────────────────────────────────────────────────────────── */
 .end-content {

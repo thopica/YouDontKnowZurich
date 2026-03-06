@@ -120,7 +120,7 @@ function clearMapOverlays() {
 // ─── Map interaction ──────────────────────────────────────────────────────────
 
 function onMapClick(e) {
-  if (!$("result-banner").classList.contains("hidden")) return; // result showing
+  if (!$("result-view").classList.contains("hidden")) return; // result showing
   if (state.round >= ROUNDS) return;
 
   state.guessLatLng = e.latlng;
@@ -156,8 +156,8 @@ function loadRound() {
   // Reset UI
   clearMapOverlays();
   $("btn-confirm").disabled = true;
-  $("result-banner").classList.add("hidden");
-  $("fountain-name-overlay").classList.add("hidden");
+  $("result-view").classList.add("hidden");
+  $("photo-view").classList.remove("hidden");
 
   // Reset map view
   state.map.setView(ZURICH_CENTER, ZURICH_ZOOM);
@@ -231,13 +231,12 @@ function confirmGuess() {
   const totalSoFar = state.scores.reduce((a, b) => a + b, 0);
   $("score-running").textContent = totalSoFar.toLocaleString();
 
-  // Show fountain name overlay
-  $("fountain-name-overlay").textContent = fountain.name;
-  $("fountain-name-overlay").classList.remove("hidden");
+  // Swap photo → result in the left panel (map stays fully visible)
+  $("photo-view").classList.add("hidden");
 
-  // Populate result banner
   $("result-distance").textContent = `📍 ${formatDist(distM)} away`;
   $("result-score").textContent = `+${score.toLocaleString()} pts`;
+  $("result-name").textContent = fountain.name;
 
   const details = [
     fountain.district && `District: ${fountain.district}`,
@@ -250,7 +249,7 @@ function confirmGuess() {
   const isLast = state.round === ROUNDS - 1;
   $("btn-next-label").textContent = isLast ? "See results →" : "Next fountain →";
 
-  $("result-banner").classList.remove("hidden");
+  $("result-view").classList.remove("hidden");
   $("btn-confirm").disabled = true;
 }
 

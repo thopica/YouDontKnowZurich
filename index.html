@@ -36,13 +36,26 @@
       </header>
 
       <main class="game-layout">
-        <!-- Left: fountain photo -->
+        <!-- Left: fountain photo / result card (same panel, two states) -->
         <section class="photo-panel">
-          <div class="photo-wrap">
-            <img id="fountain-img" src="" alt="Fountain photo" />
-            <div id="fountain-name-overlay" class="name-overlay hidden"></div>
+          <!-- Photo view (shown while guessing) -->
+          <div id="photo-view" class="photo-view">
+            <div class="photo-wrap">
+              <img id="fountain-img" src="" alt="Fountain photo" />
+            </div>
+            <div id="photo-credit" class="photo-credit"></div>
           </div>
-          <div id="photo-credit" class="photo-credit"></div>
+
+          <!-- Result view (replaces photo after confirming) -->
+          <div id="result-view" class="result-view hidden">
+            <div class="result-distance" id="result-distance"></div>
+            <div class="result-score" id="result-score"></div>
+            <div class="result-name" id="result-name"></div>
+            <div class="result-details" id="result-details"></div>
+            <button class="btn-primary" id="btn-next">
+              <span id="btn-next-label">Next fountain →</span>
+            </button>
+          </div>
         </section>
 
         <!-- Right: map -->
@@ -53,18 +66,6 @@
           </div>
         </section>
       </main>
-
-      <!-- Result banner (shown after each round) -->
-      <div id="result-banner" class="result-banner hidden">
-        <div class="result-inner">
-          <div class="result-distance" id="result-distance"></div>
-          <div class="result-score" id="result-score"></div>
-          <div class="result-details" id="result-details"></div>
-          <button class="btn-primary" id="btn-next">
-            <span id="btn-next-label">Next fountain →</span>
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- ── End Screen ── -->
