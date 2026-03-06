@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You Don't Know Zürich</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./src/css/style.css" />
+  </head>
+  <body>
+    <!-- ── Start Screen ── -->
+    <div id="screen-start" class="screen active">
+      <div class="start-content">
+        <div class="logo">🗺️</div>
+        <h1>You Don't Know Zürich</h1>
+        <p class="tagline">
+          Can you find Zürich's hidden fountains?<br />
+          5 rounds · guess the location · beat your score
+        </p>
+        <button class="btn-primary" id="btn-start">Start Playing</button>
+        <p class="credit-note">
+          Fountain data: <a href="https://data.stadt-zuerich.ch/dataset/geo_brunnen" target="_blank">Stadt Zürich OGD</a> (CC0) ·
+          Photos: <a href="https://commons.wikimedia.org/wiki/Category:Fountains_in_Z%C3%BCrich" target="_blank">Wikimedia Commons</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Game Screen ── -->
+    <div id="screen-game" class="screen">
+      <header class="game-header">
+        <div class="round-info">
+          Round <span id="round-current">1</span> of <span id="round-total">5</span>
+        </div>
+        <div class="score-running">
+          Score: <span id="score-running">0</span>
+        </div>
+      </header>
+
+      <main class="game-layout">
+        <!-- Left: fountain photo -->
+        <section class="photo-panel">
+          <div class="photo-wrap">
+            <img id="fountain-img" src="" alt="Fountain photo" />
+            <div id="fountain-name-overlay" class="name-overlay hidden"></div>
+          </div>
+          <div id="photo-credit" class="photo-credit"></div>
+        </section>
+
+        <!-- Right: map -->
+        <section class="map-panel">
+          <div id="map"></div>
+          <div class="map-controls">
+            <button class="btn-primary" id="btn-confirm" disabled>Confirm guess</button>
+          </div>
+        </section>
+      </main>
+
+      <!-- Result banner (shown after each round) -->
+      <div id="result-banner" class="result-banner hidden">
+        <div class="result-inner">
+          <div class="result-distance" id="result-distance"></div>
+          <div class="result-score" id="result-score"></div>
+          <div class="result-details" id="result-details"></div>
+          <button class="btn-primary" id="btn-next">
+            <span id="btn-next-label">Next fountain →</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── End Screen ── -->
+    <div id="screen-end" class="screen">
+      <div class="end-content">
+        <h2>Game over!</h2>
+        <div class="final-score-wrap">
+          <div class="final-score-label">Your score</div>
+          <div class="final-score" id="final-score">0</div>
+          <div class="final-score-max">/ 25,000</div>
+        </div>
+        <div id="final-rank" class="final-rank"></div>
+        <div class="round-breakdown" id="round-breakdown"></div>
+        <button class="btn-primary" id="btn-play-again">Play again</button>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
