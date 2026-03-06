@@ -37,8 +37,13 @@ async function fetchWaterFountains() {
 
 // ─── 2. Batch-fetch Wikimedia thumbnail URLs ──────────────────────────────────
 
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function fetchWikimediaThumbUrls(filenames) {
-  const BATCH = 50;
+  const BATCH = 25; // smaller batches to reduce rate-limit pressure
+  const DELAY_MS = 1000; // 1 s between batches
   const map = {};
   const unique = [...new Set(filenames)];
 
@@ -58,7 +63,15 @@ async function fetchWikimediaThumbUrls(filenames) {
       origin: "*",
     });
 
-    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
+    // Retry up to 4 times on 429 with exponential backoff
+    let res;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
+      if (res.status !== 429) break;
+      const backoff = 5000 * Math.pow(2, attempt); // 5s, 10s, 20s, 40s, 80s
+      console.log(`  ⚠ 429 rate-limited, waiting ${backoff / 1000}s…`);
+      await sleep(backoff);
+    }
     if (!res.ok) throw new Error(`Wikimedia fetch failed: ${res.status}`);
     const data = await res.json();
 
@@ -79,12 +92,16 @@ async function fetchWikimediaThumbUrls(filenames) {
       };
     }
 
+    const batchNum = Math.floor(i / BATCH) + 1;
+    const totalBatches = Math.ceil(unique.length / BATCH);
+    process.stdout.write(`\r  batch ${batchNum}/${totalBatches}…`);
+
     if (i + BATCH < unique.length) {
-      await new Promise((r) => setTimeout(r, 300)); // be polite to Wikimedia
+      await sleep(DELAY_MS);
     }
   }
 
-  console.log(`  → ${Object.keys(map).length} images resolved`);
+  console.log(`\n  → ${Object.keys(map).length} images resolved`);
   return map;
 }
 
