@@ -42,8 +42,8 @@ async function sleep(ms) {
 }
 
 async function fetchWikimediaThumbUrls(filenames) {
-  const BATCH = 25; // smaller batches to reduce rate-limit pressure
-  const DELAY_MS = 1000; // 1 s between batches
+  const BATCH = 10; // smaller batches to reduce rate-limit pressure
+  const DELAY_MS = 2000; // 2 s between batches
   const map = {};
   const unique = [...new Set(filenames)];
 
@@ -66,7 +66,11 @@ async function fetchWikimediaThumbUrls(filenames) {
     // Retry up to 4 times on 429 with exponential backoff
     let res;
     for (let attempt = 0; attempt < 5; attempt++) {
-      res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
+      res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+        headers: {
+          "User-Agent": "YouDontKnowZurich/1.0 (https://github.com/thopica/YouDontKnowZurich; contact@example.com) node-fetch",
+        },
+      });
       if (res.status !== 429) break;
       const backoff = 5000 * Math.pow(2, attempt); // 5s, 10s, 20s, 40s, 80s
       console.log(`  ⚠ 429 rate-limited, waiting ${backoff / 1000}s…`);
