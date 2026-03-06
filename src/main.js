@@ -188,7 +188,7 @@ function isColorImage(imageUrl) {
         resolve(true); // canvas blocked by CORS — assume colour
       }
     };
-    img.onerror = () => resolve(false);
+    img.onerror = () => resolve(true); // can't load to check — assume colour, let display handle it
     img.src = imageUrl;
   });
 }
@@ -229,7 +229,9 @@ async function fetchByGeosearch(lat, lng) {
   if (!infoRes.ok) return null;
   const infoData = await infoRes.json();
 
+  const fountainKeywords = /brunnen|fountain/i;
   for (const page of Object.values(infoData.query?.pages ?? {})) {
+    if (!fountainKeywords.test(page.title)) continue; // skip non-fountain photos
     const info = page.imageinfo?.[0];
     if (!info?.mime?.startsWith("image/")) continue;
     if (info.size < 50000) continue;
