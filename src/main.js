@@ -150,57 +150,127 @@ function startGame() {
   loadRound();
 }
 
-// ─── Wikimedia image fetcher ──────────────────────────────────────────────────
+// ─── Image helpers ────────────────────────────────────────────────────────────
 
 /**
- * Search Wikimedia Commons for a fountain photo by name.
- * Returns { thumbUrl, fileTitle, pageUrl } or null.
+ * Returns true if the image at the given URL appears to be a colour photo.
+ * Loads the image into a small canvas and checks whether the average HSV
+ * saturation across sampled pixels exceeds a low threshold.  B&W / sepia
+ * images have saturation near 0; colour photos are typically well above 5 %.
+ * Falls back to true (assume colour) on any CORS / load error.
  */
-async function fetchWikimediaImage(fountainName) {
-  // Try searching by fountain name, then fall back to just "Brunnen Zürich"
-  const queries = [
-    `${fountainName} Zürich`,
-    `${fountainName} Brunnen`,
-  ];
-
-  for (const q of queries) {
-    const params = new URLSearchParams({
-      action: "query",
-      generator: "search",
-      gsrnamespace: "6",       // File namespace only
-      gsrsearch: q,
-      gsrlimit: "8",
-      prop: "imageinfo",
-      iiprop: "url|mime|size",
-      iiurlwidth: "800",
-      format: "json",
-      origin: "*",
-    });
-
-    try {
-      const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (!data.query?.pages) continue;
-
-      // Pick the first result that's a JPEG/PNG and reasonably sized
-      for (const page of Object.values(data.query.pages)) {
-        const info = page.imageinfo?.[0];
-        if (!info) continue;
-        if (!info.mime?.startsWith("image/")) continue;
-        if (info.size < 50000) continue; // skip tiny thumbnails/icons
-
-        return {
-          thumbUrl: info.thumburl || info.url,
-          fileTitle: page.title.replace("File:", ""),
-          pageUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title)}`,
-        };
+function isColorImage(imageUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const SIZE = 50;
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+        let totalSat = 0;
+        let n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i] / 255;
+          const g = data[i + 1] / 255;
+          const b = data[i + 2] / 255;
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          totalSat += max === 0 ? 0 : (max - min) / max;
+          n++;
+        }
+        resolve(n > 0 && (totalSat / n) > 0.05);
+      } catch (_) {
+        resolve(true); // canvas blocked by CORS — assume colour
       }
-    } catch (_) {
-      // network error — try next query
-    }
+    };
+    img.onerror = () => resolve(false);
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Geosearch fallback: asks Wikimedia Commons for files tagged within 100 m
+ * of the fountain's coordinates, then returns the first colour result.
+ */
+async function fetchByGeosearch(lat, lng) {
+  const geoParams = new URLSearchParams({
+    action: "query",
+    list: "geosearch",
+    gscoord: `${lat}|${lng}`,
+    gsradius: "100",
+    gsnamespace: "6",
+    gslimit: "10",
+    format: "json",
+    origin: "*",
+  });
+
+  const geoRes = await fetch(`https://commons.wikimedia.org/w/api.php?${geoParams}`);
+  if (!geoRes.ok) return null;
+  const geoData = await geoRes.json();
+  const titles = (geoData.query?.geosearch ?? []).map((r) => r.title);
+  if (!titles.length) return null;
+
+  const infoParams = new URLSearchParams({
+    action: "query",
+    titles: titles.join("|"),
+    prop: "imageinfo",
+    iiprop: "url|mime|size",
+    iiurlwidth: "800",
+    format: "json",
+    origin: "*",
+  });
+
+  const infoRes = await fetch(`https://commons.wikimedia.org/w/api.php?${infoParams}`);
+  if (!infoRes.ok) return null;
+  const infoData = await infoRes.json();
+
+  for (const page of Object.values(infoData.query?.pages ?? {})) {
+    const info = page.imageinfo?.[0];
+    if (!info?.mime?.startsWith("image/")) continue;
+    if (info.size < 50000) continue;
+    const thumbUrl = info.thumburl || info.url;
+    if (!(await isColorImage(thumbUrl))) continue;
+    return {
+      thumbUrl,
+      fileTitle: page.title.replace("File:", ""),
+      pageUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title)}`,
+    };
   }
   return null;
+}
+
+/**
+ * Option E: use the pre-stored imageUrl from fountains.json directly (fast,
+ * no API call needed).  If that URL is missing, fails to load, or turns out
+ * to be a B&W / greyscale photo, fall back to a coordinate-based geosearch
+ * that only returns colour images.
+ *
+ * Returns { thumbUrl, fileTitle, pageUrl } or null.
+ */
+async function getImage(fountain) {
+  // Primary: stored URL
+  if (fountain.imageUrl) {
+    const color = await isColorImage(fountain.imageUrl);
+    if (color) {
+      return {
+        thumbUrl: fountain.imageUrl,
+        fileTitle: fountain.imageCredit || fountain.name,
+        pageUrl: fountain.imagePage || "https://commons.wikimedia.org/",
+      };
+    }
+  }
+
+  // Fallback: geosearch within 100 m, colour only
+  try {
+    return await fetchByGeosearch(fountain.lat, fountain.lng);
+  } catch (_) {
+    return null;
+  }
 }
 
 function loadRound() {
@@ -225,7 +295,7 @@ function loadRound() {
   img.src = "";
   credit.textContent = "Loading photo…";
 
-  fetchWikimediaImage(fountain.name).then((result) => {
+  getImage(fountain).then((result) => {
     if (result) {
       img.onload = () => { img.style.opacity = "1"; };
       img.onerror = () => { img.style.opacity = "1"; }; // show broken icon rather than nothing
