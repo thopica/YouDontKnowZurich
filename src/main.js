@@ -150,6 +150,59 @@ function startGame() {
   loadRound();
 }
 
+// ─── Wikimedia image fetcher ──────────────────────────────────────────────────
+
+/**
+ * Search Wikimedia Commons for a fountain photo by name.
+ * Returns { thumbUrl, fileTitle, pageUrl } or null.
+ */
+async function fetchWikimediaImage(fountainName) {
+  // Try searching by fountain name, then fall back to just "Brunnen Zürich"
+  const queries = [
+    `${fountainName} Zürich`,
+    `${fountainName} Brunnen`,
+  ];
+
+  for (const q of queries) {
+    const params = new URLSearchParams({
+      action: "query",
+      generator: "search",
+      gsrnamespace: "6",       // File namespace only
+      gsrsearch: q,
+      gsrlimit: "8",
+      prop: "imageinfo",
+      iiprop: "url|mime|size",
+      iiurlwidth: "800",
+      format: "json",
+      origin: "*",
+    });
+
+    try {
+      const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!data.query?.pages) continue;
+
+      // Pick the first result that's a JPEG/PNG and reasonably sized
+      for (const page of Object.values(data.query.pages)) {
+        const info = page.imageinfo?.[0];
+        if (!info) continue;
+        if (!info.mime?.startsWith("image/")) continue;
+        if (info.size < 50000) continue; // skip tiny thumbnails/icons
+
+        return {
+          thumbUrl: info.thumburl || info.url,
+          fileTitle: page.title.replace("File:", ""),
+          pageUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title)}`,
+        };
+      }
+    } catch (_) {
+      // network error — try next query
+    }
+  }
+  return null;
+}
+
 function loadRound() {
   const fountain = state.fountains[state.round];
 
@@ -165,36 +218,37 @@ function loadRound() {
   // Update header
   $("round-current").textContent = state.round + 1;
 
-  // Load image
+  // Load image — query Wikimedia Commons API for a real photo
   const img = $("fountain-img");
+  const credit = $("photo-credit");
   img.style.opacity = "0";
-  img.src = fountain.imageUrl;
-  img.onload = () => { img.style.opacity = "1"; };
-  // Two-stage fallback: Special:FilePath redirect → placeholder SVG
-  let fallbackTried = false;
-  img.onerror = () => {
-    if (!fallbackTried && fountain.imageCredit) {
-      fallbackTried = true;
-      img.src = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fountain.imageCredit)}?width=800`;
-      return;
-    }
-    // Show inline SVG placeholder so the panel isn't blank
-    img.src =
-      "data:image/svg+xml," +
-      encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">` +
-        `<rect width="800" height="600" fill="#1e293b"/>` +
-        `<text x="400" y="270" font-family="sans-serif" font-size="64" fill="#334155" text-anchor="middle">🪣</text>` +
-        `<text x="400" y="340" font-family="sans-serif" font-size="18" fill="#64748b" text-anchor="middle">Photo not available</text>` +
-        `<text x="400" y="370" font-family="sans-serif" font-size="14" fill="#475569" text-anchor="middle">${fountain.name}</text>` +
-        `</svg>`
-      );
-    img.style.opacity = "1";
-  };
+  img.src = "";
+  credit.textContent = "Loading photo…";
 
-  // Photo credit
-  $("photo-credit").innerHTML =
-    `Photo: <a href="${fountain.imagePage}" target="_blank" rel="noopener">${fountain.imageCredit}</a> · Wikimedia Commons`;
+  fetchWikimediaImage(fountain.name).then((result) => {
+    if (result) {
+      img.onload = () => { img.style.opacity = "1"; };
+      img.onerror = () => { img.style.opacity = "1"; }; // show broken icon rather than nothing
+      img.src = result.thumbUrl;
+      // Store resolved image info back on the fountain for the result view
+      fountain._resolvedImage = result;
+      credit.innerHTML =
+        `Photo: <a href="${result.pageUrl}" target="_blank" rel="noopener">${result.fileTitle}</a> · Wikimedia Commons`;
+    } else {
+      // Fallback: SVG placeholder
+      img.src =
+        "data:image/svg+xml," +
+        encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">` +
+          `<rect width="800" height="600" fill="#1e293b"/>` +
+          `<text x="400" y="280" font-family="sans-serif" font-size="56" fill="#334155" text-anchor="middle">🪣</text>` +
+          `<text x="400" y="345" font-family="sans-serif" font-size="18" fill="#64748b" text-anchor="middle">No photo found</text>` +
+          `</svg>`
+        );
+      img.style.opacity = "1";
+      credit.textContent = "Photo not available";
+    }
+  });
 }
 
 function confirmGuess() {
