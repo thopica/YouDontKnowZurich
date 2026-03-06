@@ -168,11 +168,25 @@ function loadRound() {
   img.style.opacity = "0";
   img.src = fountain.imageUrl;
   img.onload = () => { img.style.opacity = "1"; };
+  // Two-stage fallback: Special:FilePath redirect → placeholder SVG
+  let fallbackTried = false;
   img.onerror = () => {
-    // Fallback: try a generic Wikimedia Commons thumbnail
-    img.src = fountain.imagePage
-      ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fountain.imageCredit)}?width=800`
-      : "";
+    if (!fallbackTried && fountain.imageCredit) {
+      fallbackTried = true;
+      img.src = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fountain.imageCredit)}?width=800`;
+      return;
+    }
+    // Show inline SVG placeholder so the panel isn't blank
+    img.src =
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">` +
+        `<rect width="800" height="600" fill="#1e293b"/>` +
+        `<text x="400" y="270" font-family="sans-serif" font-size="64" fill="#334155" text-anchor="middle">🪣</text>` +
+        `<text x="400" y="340" font-family="sans-serif" font-size="18" fill="#64748b" text-anchor="middle">Photo not available</text>` +
+        `<text x="400" y="370" font-family="sans-serif" font-size="14" fill="#475569" text-anchor="middle">${fountain.name}</text>` +
+        `</svg>`
+      );
     img.style.opacity = "1";
   };
 
