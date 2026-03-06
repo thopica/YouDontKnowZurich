@@ -172,6 +172,7 @@ h1 {
 
 #map {
   flex: 1;
+  min-height: 0;
   cursor: crosshair;
 }
 

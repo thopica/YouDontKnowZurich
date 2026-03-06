@@ -143,8 +143,10 @@ function startGame() {
   $("score-running").textContent = "0";
   $("round-total").textContent = ROUNDS;
 
-  initMap();
   showScreen("game");
+  initMap();
+  // Leaflet needs the container to be visible before it can measure dimensions
+  state.map.invalidateSize();
   loadRound();
 }
 
